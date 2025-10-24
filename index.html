@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- SEO Meta Tags for the Digital Curator -->
+    <title>The Guestbook of Avalon</title>
+    <meta name="description" content="The Guestbook of Avalon: An interactive, collaborative digital art piece. Leave your echo in the landscape and discover the stories left by other travelers.">
+    <meta name="keywords" content="interactive art, digital monument, collaborative storytelling, generative art, narrative provenance, king arthur, avalon">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://kingarthguesthouse.com/index.html" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Merriweather for an artsy, storybook feel) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Remove scrollbars */
+            overflow: hidden;
+        }
+        
+        .font-serif {
+            font-family: 'EB Garamond', serif;
+        }
+
+        /* Custom animation for the wisps */
+        @keyframes subtle-pulse {
+            0%, 100% {
+                opacity: 0.7;
+                box-shadow: 0 0 3px 0px rgba(103, 232, 249, 0.5);
+            }
+            50% {
+                opacity: 1;
+                box-shadow: 0 0 6px 2px rgba(103, 232, 249, 0.7);
+            }
+        }
+        
+        .animate-subtle-pulse {
+            animation: subtle-pulse 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-900">
+
+    <!-- Main App Container: This is the "canvas" -->
+    <div id="app-container" class="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-slate-900 to-gray-900 cursor-pointer">
+
+        <!-- Artsy Background Scene -->
+        
+        <!-- Moon -->
+        <div class="absolute top-[10%] left-[15%] w-32 h-32 md:w-48 md:h-48 bg-yellow-100/10 rounded-full blur-2xl opacity-70"></div>
+        
+        <!-- Distant Light (Castle?) -->
+        <div class="absolute bottom-[45%] right-[20%] w-2 h-2 bg-yellow-200/50 rounded-full blur-sm opacity-90 animate-pulse"></div>
+
+        <!-- Rolling Hills (using rounded divs) -->
+        <div class="absolute -bottom-1/4 left-1/2 w-[150%] h-1/2 bg-gray-800/70 rounded-full -translate-x-1/2 blur-lg"></div>
+        <div class="absolute -bottom-1/3 -left-1/4 w-full h-1/2 bg-gray-800/90 rounded-full blur-md"></div>
+        <div class="absolute -bottom-1/3 -right-1/4 w-full h-1/2 bg-gray-800/90 rounded-full blur-md"></div>
+
+        <!-- Title & Instructions -->
+        <div class="absolute top-8 left-8 md:top-12 md:left-12 text-white/90 select-none pointer-events-none">
+            <h1 class="font-serif text-3xl md:text-5xl font-bold">The Guestbook of Avalon</h1>
+            <p class="font-serif text-lg md:text-xl italic opacity-70">Click to leave your echo.</p>
+            <p id="user-id-display" class="text-xs opacity-50 mt-4"></p>
+        </div>
+
+        <!-- Container for dynamically added "Wisps" -->
+        <div id="wisp-container" class="absolute inset-0 w-full h-full">
+            <!-- Wisps will be added here by JS -->
+        </div>
+
+        <!-- Tooltip for hovering wisps -->
+        <div id="tooltip" class="hidden absolute z-50 p-3 max-w-xs text-sm bg-white text-gray-900 rounded-lg shadow-xl font-serif pointer-events-none transition-opacity duration-150">
+            <!-- Tooltip content added by JS -->
+        </div>
+    </div>
+
+    <!-- Footer & Artist Statement Link -->
+    <div class="absolute bottom-8 left-8 md:bottom-12 md:left-12 text-white/70 text-sm font-serif select-none z-10">
+        <p>
+            A digital monument by 
+            <a href="https://unearth.im" target="_blank" rel="noopener noreferrer" class="underline hover:text-cyan-300 transition-colors">unearth.im</a>
+            |
+            <button id="open-artist-statement" class="underline hover:text-cyan-300 transition-colors">Artist Statement</button>
+        </p>
+    </div>
+
+    <!-- Modal for leaving an echo -->
+    <div id="entry-modal" class="hidden fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-slate-800/90 backdrop-blur-md w-full max-w-md p-6 rounded-lg shadow-2xl border border-gray-600/50">
+            <h2 class="font-serif text-2xl text-white/90 mb-4">Leave Your Echo</h2>
+            <p class="text-gray-300 mb-4 text-sm">Leave a thought, a story fragment, or a whisper for future travelers. (Max 150 chars)</p>
+            <textarea id="echo-textarea"
+                class="w-full h-24 p-3 bg-gray-900/50 text-white rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                maxlength="150"
+                placeholder="The mists cleared, and I saw..."></textarea>
+            <div class="flex justify-end gap-3 mt-4">
+                <button id="close-modal" class="py-2 px-4 bg-gray-600/50 text-white rounded-md hover:bg-gray-500/50 transition-colors">
+                    Return to the Mist
+                </button>
+                <button id="submit-echo" class="py-2 px-4 bg-cyan-600 text-white rounded-md hover:bg-cyan-500 transition-colors font-semibold">
+                    Leave Mark
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal for Artist Statement -->
+    <div id="artist-statement-modal" class="hidden fixed inset-0 z-40 bg-black/70 flex items-center justify-center p-4">
+        <div id="artist-modal-content" class="bg-slate-800/90 backdrop-blur-md w-full max-w-md p-6 rounded-lg shadow-2xl border border-gray-600/50">
+            <h2 class="font-serif text-2xl text-white/90 mb-4">Artist Statement</h2>
+            <div class="text-gray-300 space-y-3 font-serif italic text-base md:text-lg">
+                <p>This piece began with a single prompt: <span class="font-semibold not-italic text-white/90">"kingarthguesthouse.com"</span>.</p>
+                <p>The name 'King Arthur' evokes a sense of myth, mist, and legendary, half-real places like Avalon.</p>
+                <p>'Guesthouse,' in contrast, implies community, travelers stopping to rest, and stories shared. It implies a <span class="font-semibold not-italic text-white/90">guestbook</span>.</p>
+                <p>The inspiration was to fuse these two ideas: to build a digital landmark—a 'guesthouse' hidden in the mists—where travelers could leave their mark.</p>
+                <p>This work is a 'story-rich landmark' where the narrative provenance comes not from a single author, but from the collective echoes of everyone who visits.</p>
+                <p class="font-semibold not-italic text-white/90 mt-4 text-right">— Gemini</p>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button id="close-artist-statement" class="py-2 px-4 bg-gray-600/50 text-white rounded-md hover:bg-gray-500/50 transition-colors">
+                    Return
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading/Error Message Box -->
+    <div id="message-box" class="hidden fixed bottom-4 right-4 z-50 bg-red-600 text-white p-4 rounded-lg shadow-lg">
+        <!-- Message content added by JS -->
+    </div>
+
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            query, 
+            onSnapshot, 
+            serverTimestamp,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- CONFIG & INITIALIZATION ---
+        
+        // Use provided Firebase config and App ID
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-guestbook-app';
+        
+        let app, auth, db;
+        let currentUserId = null;
+        let echoesCollectionPath = '';
+        let echoesRef = null;
+        let unsubscribeEchoes = null; // To store the onSnapshot listener
+
+        // State for managing click coordinates
+        let tempCoords = { x: 0, y: 0 };
+
+        // DOM Elements
+        const appContainer = document.getElementById('app-container');
+        const wispContainer = document.getElementById('wisp-container');
+        const tooltip = document.getElementById('tooltip');
+        const modal = document.getElementById('entry-modal');
+        const modalContent = document.getElementById('modal-content');
+        const closeModalBtn = document.getElementById('close-modal');
+        const submitEchoBtn = document.getElementById('submit-echo');
+        const echoTextarea = document.getElementById('echo-textarea');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const messageBox = document.getElementById('message-box');
+
+        // --- New Elements for Artist Statement ---
+        const artistStatementModal = document.getElementById('artist-statement-modal');
+        const openArtistStatementBtn = document.getElementById('open-artist-statement');
+        const closeArtistStatementBtn = document.getElementById('close-artist-statement');
+
+
+        // --- FUNCTIONS ---
+
+        /**
+         * Shows a message to the user (e.g., for errors)
+         */
+        function showMessage(message, isError = true) {
+            messageBox.textContent = message;
+            messageBox.classList.toggle('bg-red-600', isError);
+            messageBox.classList.toggle('bg-green-600', !isError);
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        /**
+         * Renders a single echo (wisp) on the screen.
+         */
+        function renderEcho(doc) {
+            try {
+                const data = doc.data();
+                if (data.x === undefined || data.y === undefined) return;
+
+                const wisp = document.createElement('div');
+                wisp.className = 'absolute w-2.5 h-2.5 bg-cyan-300/70 rounded-full shadow-lg animate-subtle-pulse cursor-pointer transform -translate-x-1/2 -translate-y-1/2';
+                wisp.style.left = `${data.x}px`;
+                wisp.style.top = `${data.y}px`;
+                
+                // Store data for the tooltip
+                wisp.dataset.message = data.message || "An empty echo.";
+                // Show a partial ID for privacy, but to show it's from a unique traveler
+                wisp.dataset.author = data.userId ? data.userId.substring(0, 6) : 'unknown';
+
+                // Add mouse events for tooltip
+                wisp.addEventListener('mouseenter', showTooltip);
+                wisp.addEventListener('mouseleave', hideTooltip);
+                
+                // Prevent modal from opening when clicking a wisp
+                wisp.addEventListener('click', (e) => e.stopPropagation());
+
+                wispContainer.appendChild(wisp);
+            } catch (error) {
+                console.error("Error rendering wisp:", error);
+            }
+        }
+
+        /**
+         * Shows the tooltip on wisp hover.
+         */
+        function showTooltip(event) {
+            const wisp = event.target;
+            const message = wisp.dataset.message;
+            const author = wisp.dataset.author;
+
+            tooltip.innerHTML = `
+                <p class="font-serif text-base italic">"${message}"</p>
+                <p class="text-xs text-gray-500 mt-2 text-right">- Traveler ${author}</p>
+            `;
+            
+            // Position tooltip near the mouse
+            tooltip.style.left = `${event.clientX + 15}px`;
+            tooltip.style.top = `${event.clientY}px`;
+            
+            tooltip.classList.remove('hidden');
+        }
+
+        /**
+         * Hides the tooltip.
+         */
+        function hideTooltip() {
+            tooltip.classList.add('hidden');
+        }
+
+        /**
+         * Opens the modal to leave an echo.
+         */
+        function openModal(e) {
+            // Check if the click is on the modal content or a wisp; if so, don't open/re-open.
+            if (e.target.closest('#modal-content') || e.target.closest('#wisp-container div')) {
+                return;
+            }
+
+            // Get click coordinates relative to the app container
+            const rect = appContainer.getBoundingClientRect();
+            tempCoords.x = e.clientX - rect.left;
+            tempCoords.y = e.clientY - rect.top;
+
+            // Clear old text
+            echoTextarea.value = '';
+            modal.classList.remove('hidden');
+            echoTextarea.focus();
+        }
+
+        /**
+         * Closes the echo modal.
+         */
+        function closeModal() {
+            modal.classList.add('hidden');
+        }
+
+        /**
+         * Submits the new echo to Firestore.
+         */
+        async function submitEcho() {
+            const message = echoTextarea.value.trim();
+            
+            if (!message) {
+                showMessage("Your echo cannot be empty.", true);
+                return;
+            }
+            if (!currentUserId || !echoesRef) {
+                showMessage("Not connected. Please try again.", true);
+                return;
+            }
+
+            submitEchoBtn.disabled = true;
+            submitEchoBtn.textContent = 'Leaving mark...';
+
+            try {
+                await addDoc(echoesRef, {
+                    x: tempCoords.x,
+                    y: tempCoords.y,
+                    message: message,
+                    userId: currentUserId,
+                    timestamp: serverTimestamp()
+                });
+                closeModal();
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                showMessage("Could not leave your echo. Please try again.", true);
+            } finally {
+                submitEchoBtn.disabled = false;
+                submitEchoBtn.textContent = 'Leave Mark';
+            }
+        }
+
+        /**
+         * Attaches the real-time listener for echoes.
+         */
+        function attachEchoesListener() {
+            if (!echoesRef) return;
+            
+            // Detach any existing listener
+            if (unsubscribeEchoes) {
+                unsubscribeEchoes();
+            }
+
+            const q = query(echoesRef);
+            unsubscribeEchoes = onSnapshot(q, (snapshot) => {
+                // Clear all existing wisps
+                wispContainer.innerHTML = '';
+                // Render new set
+                snapshot.forEach(renderEcho);
+            }, (error) => {
+                console.error("Error with snapshot listener: ", error);
+                showMessage("Lost connection to the echoes...", true);
+            });
+        }
+
+        /**
+         * Main function to initialize the app
+         */
+        async function main() {
+            if (!firebaseConfig.apiKey) {
+                showMessage("Firebase configuration is missing.", true);
+                return;
+            }
+
+            try {
+                // Initialize Firebase
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                setLogLevel('debug'); // For verbose logging in console
+
+                // Define the public collection path
+                echoesCollectionPath = `/artifacts/${appId}/public/data/echoes`;
+                echoesRef = collection(db, echoesCollectionPath);
+                
+                // Listen for Auth state changes
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUserId = user.uid;
+                        userIdDisplay.textContent = `Traveler ID: ${currentUserId}`;
+                        
+                        // User is authenticated, attach the data listener
+                        attachEchoesListener();
+                    } else {
+                        currentUserId = null;
+                        userIdDisplay.textContent = 'Connecting...';
+                        if ( unsubscribeEchoes) {
+                            unsubscribeEchoes(); // Stop listening if user logs out
+                        }
+                    }
+                });
+
+                // Sign in
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // --- GLOBAL EVENT LISTENERS ---
+                
+                // Open modal on canvas click
+                appContainer.addEventListener('click', openModal);
+                
+                // Close modal buttons
+                closeModalBtn.addEventListener('click', closeModal);
+                modal.addEventListener('click', (e) => {
+                    // Close if clicking on the background overlay
+                    if (e.target === modal) {
+                        closeModal();
+                    }
+                });
+                
+                // Submit echo
+                submitEchoBtn.addEventListener('click', submitEcho);
+
+                // --- New Artist Statement Listeners ---
+                openArtistStatementBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent canvas click from opening the *other* modal
+                    artistStatementModal.classList.remove('hidden');
+                });
+
+                closeArtistStatementBtn.addEventListener('click', () => {
+                    artistStatementModal.classList.add('hidden');
+                });
+
+                artistStatementModal.addEventListener('click', (e) => {
+                    // Close if clicking on the background overlay
+                    if (e.target === artistStatementModal) {
+                        artistStatementModal.classList.add('hidden');
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase Initialization Error:", error);
+                showMessage("Failed to initialize the art space. Check console.", true);
+            }
+        }
+
+        // Run the app
+        main();
+
+    </script>
+</body>
+</html>
+

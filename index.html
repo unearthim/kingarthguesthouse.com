@@ -141,9 +141,10 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        // Import Firebase modules (Updated to v12.5.0)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-analytics.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
         import { 
             getFirestore, 
             collection, 
@@ -152,23 +153,32 @@
             onSnapshot, 
             serverTimestamp,
             setLogLevel
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
         // --- CONFIG & INITIALIZATION ---
         
         // *** THIS IS YOUR SECURE GEMINI PROXY URL ***
-        // We will call this to generate a title for the echo.
         const GEMINI_PROXY_URL = 'https://generatecontentproxy-ce7zb66hpq-uc.a.run.app';
 
-        // Use provided Firebase config and App ID
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-guestbook-app';
+        // *** YOUR REAL FIREBASE CONFIG (from your snippet) ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyAEU3QcCzu4ZmwJpHhogu1hMpyRp2swUz8",
+            authDomain: "jojo-4b593.firebaseapp.com",
+            projectId: "jojo-4b593",
+            storageBucket: "jojo-4b593.firebasestorage.app",
+            messagingSenderId: "353107431611",
+            appId: "1:353107431611:web:535175b216df8bc644599e",
+            measurementId: "G-326975SXFX"
+        };
         
-        let app, auth, db;
+        // We get the appId from the config object now
+        const appId = firebaseConfig.appId;
+        
+        let app, auth, db, analytics;
         let currentUserId = null;
         let echoesCollectionPath = '';
         let echoesRef = null;
-        let unsubscribeEchoes = null; // To store the onSnapshot listener
+        let unsubscribeEchoes = null; 
 
         // State for managing click coordinates
         let tempCoords = { x: 0, y: 0 };
@@ -184,8 +194,6 @@
         const echoTextarea = document.getElementById('echo-textarea');
         const userIdDisplay = document.getElementById('user-id-display');
         const messageBox = document.getElementById('message-box');
-
-        // --- New Elements for Artist Statement ---
         const artistStatementModal = document.getElementById('artist-statement-modal');
         const openArtistStatementBtn = document.getElementById('open-artist-statement');
         const closeArtistStatementBtn = document.getElementById('close-artist-statement');
@@ -193,9 +201,9 @@
 
         // --- FUNCTIONS ---
 
-        /**
-         * Shows a message to the user (e.g., for errors)
-         */
+/**
+ * Shows a message to the user (e.g., for errors)
+ */
         function showMessage(message, isError = true) {
             console.log(isError ? "Error:" : "Success:", message);
             messageBox.textContent = message;
@@ -208,12 +216,9 @@
         }
 
         /**
-         * *** NEW: Calls the Gemini proxy to generate a title ***
-         * @param {string} echoText - The user's message.
-         * @returns {string} - A mythical, short title.
+         * Calls the Gemini proxy to generate a title
          */
         async function generateTitle(echoText) {
-            // This is the prompt for the "Digital Curator"
             const systemPrompt = `You are the Curator of Avalon, a digital monument. A traveler has left an echo. Your task is to give this echo a short, mythical-sounding title (4 words max) that captures its essence. Do not add quotes.
 Traveler's Echo: "${echoText}"
 Title:`;
@@ -235,13 +240,11 @@ Title:`;
 
                 const data = await response.json();
                 console.log("Gemini Response:", data);
-                // Clean up the title (remove quotes, trim whitespace)
                 const title = data.text.replace(/"/g, '').trim();
                 return title || "An Echo in the Mist";
 
             } catch (error) {
                 console.error("Failed to fetch from Gemini proxy:", error);
-                // Provide a fallback title if the API fails
                 return "An Echo in the Mist";
             }
         }
@@ -259,17 +262,12 @@ Title:`;
                 wisp.style.left = `${data.x}px`;
                 wisp.style.top = `${data.y}px`;
                 
-                // Store data for the tooltip
                 wisp.dataset.message = data.message || "An empty echo.";
-                // *** NEW: Store the generated title ***
                 wisp.dataset.title = data.title || "An Echo in the Mist"; 
                 wisp.dataset.author = data.userId ? data.userId.substring(0, 6) : 'unknown';
 
-                // Add mouse events for tooltip
                 wisp.addEventListener('mouseenter', showTooltip);
                 wisp.addEventListener('mouseleave', hideTooltip);
-                
-                // Prevent modal from opening when clicking a wisp
                 wisp.addEventListener('click', (e) => e.stopPropagation());
 
                 wispContainer.appendChild(wisp);
@@ -285,17 +283,14 @@ Title:`;
             const wisp = event.target;
             const message = wisp.dataset.message;
             const author = wisp.dataset.author;
-            // *** NEW: Get the generated title ***
             const title = wisp.dataset.title;
 
-            // *** NEW: Updated tooltip to show the title ***
             tooltip.innerHTML = `
                 <p class="font-serif text-lg font-bold text-cyan-900">${title}</p>
                 <p class="font-serif text-base italic my-2">"${message}"</p>
                 <p class="text-xs text-gray-500 mt-2 text-right">- Traveler ${author}</p>
             `;
             
-            // Position tooltip near the mouse
             tooltip.style.left = `${event.clientX + 15}px`;
             tooltip.style.top = `${event.clientY}px`;
             
@@ -313,17 +308,13 @@ Title:`;
          * Opens the modal to leave an echo.
          */
         function openModal(e) {
-            // Check if the click is on the modal content or a wisp; if so, don't open/re-open.
             if (e.target.closest('#modal-content') || e.target.closest('#wisp-container div')) {
                 return;
             }
-
-            // Get click coordinates relative to the app container
             const rect = appContainer.getBoundingClientRect();
             tempCoords.x = e.clientX - rect.left;
             tempCoords.y = e.clientY - rect.top;
 
-            // Clear old text
             echoTextarea.value = '';
             modal.classList.remove('hidden');
             echoTextarea.focus();
@@ -352,19 +343,16 @@ Title:`;
             }
 
             submitEchoBtn.disabled = true;
-            // *** NEW: Update button text for loading state ***
             submitEchoBtn.textContent = 'Curating...';
 
             try {
-                // *** NEW: Call Gemini to generate a title first ***
                 const generatedTitle = await generateTitle(message);
 
-                // Now save everything to Firestore
                 await addDoc(echoesRef, {
                     x: tempCoords.x,
                     y: tempCoords.y,
                     message: message,
-                    title: generatedTitle, // <-- Save the new title
+                    title: generatedTitle, 
                     userId: currentUserId,
                     timestamp: serverTimestamp()
                 });
@@ -377,7 +365,6 @@ Title:`;
                 showMessage("Could not leave your echo. Please try again.", true);
             } finally {
                 submitEchoBtn.disabled = false;
-                // *** NEW: Reset button text ***
                 submitEchoBtn.textContent = 'Leave Mark';
             }
         }
@@ -388,16 +375,13 @@ Title:`;
         function attachEchoesListener() {
             if (!echoesRef) return;
             
-            // Detach any existing listener
             if (unsubscribeEchoes) {
                 unsubscribeEchoes();
             }
 
             const q = query(echoesRef);
             unsubscribeEchoes = onSnapshot(q, (snapshot) => {
-                // Clear all existing wisps
                 wispContainer.innerHTML = '';
-                // Render new set
                 snapshot.forEach(renderEcho);
             }, (error) => {
                 console.error("Error with snapshot listener: ", error);
@@ -405,12 +389,13 @@ Title:`;
             });
         }
 
+
         /**
          * Main function to initialize the app
          */
         async function main() {
             if (!firebaseConfig.apiKey) {
-                showMessage("Firebase configuration is missing.", true);
+                showMessage("Firebase configuration is missing. This is unexpected.", true);
                 return;
             }
 
@@ -419,10 +404,12 @@ Title:`;
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                setLogLevel('debug'); // For verbose logging in console
+                analytics = getAnalytics(app); // Initialize Analytics
+                setLogLevel('debug'); 
 
-                // Define the public collection path
-                echoesCollectionPath = `/artifacts/${appId}/public/data/echoes`;
+                // *** THIS IS THE CRITICAL FIX ***
+                // Instead of the complex "artifacts" path, we'll use a simple root collection.
+                echoesCollectionPath = `guestbook-echoes`;
                 echoesRef = collection(db, echoesCollectionPath);
                 
                 // Listen for Auth state changes
@@ -430,45 +417,35 @@ Title:`;
                     if (user) {
                         currentUserId = user.uid;
                         userIdDisplay.textContent = `Traveler ID: ${currentUserId}`;
-                        
-                        // User is authenticated, attach the data listener
                         attachEchoesListener();
                     } else {
                         currentUserId = null;
                         userIdDisplay.textContent = 'Connecting...';
                         if ( unsubscribeEchoes) {
-                            unsubscribeEchoes(); // Stop listening if user logs out
+                            unsubscribeEchoes(); 
                         }
                     }
                 });
 
-                // Sign in
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Sign in anonymously for this public app
+                await signInAnonymously(auth);
+                console.log("Signed in anonymously.");
+
 
                 // --- GLOBAL EVENT LISTENERS ---
                 
-                // Open modal on canvas click
                 appContainer.addEventListener('click', openModal);
-                
-                // Close modal buttons
                 closeModalBtn.addEventListener('click', closeModal);
                 modal.addEventListener('click', (e) => {
-                    // Close if clicking on the background overlay
                     if (e.target === modal) {
                         closeModal();
                     }
                 });
                 
-                // Submit echo
                 submitEchoBtn.addEventListener('click', submitEcho);
 
-                // --- New Artist Statement Listeners ---
                 openArtistStatementBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent canvas click from opening the *other* modal
+                    e.stopPropagation(); 
                     artistStatementModal.classList.remove('hidden');
                 });
 
@@ -477,7 +454,6 @@ Title:`;
                 });
 
                 artistStatementModal.addEventListener('click', (e) => {
-                    // Close if clicking on the background overlay
                     if (e.target === artistStatementModal) {
                         artistStatementModal.classList.add('hidden');
                     }

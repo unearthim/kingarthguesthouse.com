@@ -78,7 +78,7 @@
         </div>
 
         <!-- Tooltip for hovering wisps -->
-        <div id="tooltip" class="hidden absolute z-50 p-3 max-w-xs text-sm bg-white text-gray-900 rounded-lg shadow-xl font-serif pointer-events-none transition-opacity duration-150">
+        <div id="tooltip" class="hidden absolute z-50 p-4 max-w-xs text-sm bg-white text-gray-900 rounded-lg shadow-xl pointer-events-none transition-opacity duration-150">
             <!-- Tooltip content added by JS -->
         </div>
     </div>
@@ -106,7 +106,7 @@
                 <button id="close-modal" class="py-2 px-4 bg-gray-600/50 text-white rounded-md hover:bg-gray-500/50 transition-colors">
                     Return to the Mist
                 </button>
-                <button id="submit-echo" class="py-2 px-4 bg-cyan-600 text-white rounded-md hover:bg-cyan-500 transition-colors font-semibold">
+                <button id="submit-echo" class="py-2 px-4 bg-cyan-600 text-white rounded-md hover:bg-cyan-500 transition-colors font-semibold w-32">
                     Leave Mark
                 </button>
             </div>
@@ -156,6 +156,10 @@
 
         // --- CONFIG & INITIALIZATION ---
         
+        // *** THIS IS YOUR SECURE GEMINI PROXY URL ***
+        // We will call this to generate a title for the echo.
+        const GEMINI_PROXY_URL = 'https://generatecontentproxy-ce7zb66hpq-uc.a.run.app';
+
         // Use provided Firebase config and App ID
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-guestbook-app';
@@ -193,6 +197,7 @@
          * Shows a message to the user (e.g., for errors)
          */
         function showMessage(message, isError = true) {
+            console.log(isError ? "Error:" : "Success:", message);
             messageBox.textContent = message;
             messageBox.classList.toggle('bg-red-600', isError);
             messageBox.classList.toggle('bg-green-600', !isError);
@@ -200,6 +205,45 @@
             setTimeout(() => {
                 messageBox.classList.add('hidden');
             }, 3000);
+        }
+
+        /**
+         * *** NEW: Calls the Gemini proxy to generate a title ***
+         * @param {string} echoText - The user's message.
+         * @returns {string} - A mythical, short title.
+         */
+        async function generateTitle(echoText) {
+            // This is the prompt for the "Digital Curator"
+            const systemPrompt = `You are the Curator of Avalon, a digital monument. A traveler has left an echo. Your task is to give this echo a short, mythical-sounding title (4 words max) that captures its essence. Do not add quotes.
+Traveler's Echo: "${echoText}"
+Title:`;
+
+            console.log("Calling Gemini Proxy at:", GEMINI_PROXY_URL);
+
+            try {
+                const response = await fetch(GEMINI_PROXY_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: systemPrompt })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error("Gemini Proxy Error:", errorData);
+                    throw new Error(errorData.error || "Failed to generate title.");
+                }
+
+                const data = await response.json();
+                console.log("Gemini Response:", data);
+                // Clean up the title (remove quotes, trim whitespace)
+                const title = data.text.replace(/"/g, '').trim();
+                return title || "An Echo in the Mist";
+
+            } catch (error) {
+                console.error("Failed to fetch from Gemini proxy:", error);
+                // Provide a fallback title if the API fails
+                return "An Echo in the Mist";
+            }
         }
 
         /**
@@ -217,7 +261,8 @@
                 
                 // Store data for the tooltip
                 wisp.dataset.message = data.message || "An empty echo.";
-                // Show a partial ID for privacy, but to show it's from a unique traveler
+                // *** NEW: Store the generated title ***
+                wisp.dataset.title = data.title || "An Echo in the Mist"; 
                 wisp.dataset.author = data.userId ? data.userId.substring(0, 6) : 'unknown';
 
                 // Add mouse events for tooltip
@@ -240,9 +285,13 @@
             const wisp = event.target;
             const message = wisp.dataset.message;
             const author = wisp.dataset.author;
+            // *** NEW: Get the generated title ***
+            const title = wisp.dataset.title;
 
+            // *** NEW: Updated tooltip to show the title ***
             tooltip.innerHTML = `
-                <p class="font-serif text-base italic">"${message}"</p>
+                <p class="font-serif text-lg font-bold text-cyan-900">${title}</p>
+                <p class="font-serif text-base italic my-2">"${message}"</p>
                 <p class="text-xs text-gray-500 mt-2 text-right">- Traveler ${author}</p>
             `;
             
@@ -303,22 +352,32 @@
             }
 
             submitEchoBtn.disabled = true;
-            submitEchoBtn.textContent = 'Leaving mark...';
+            // *** NEW: Update button text for loading state ***
+            submitEchoBtn.textContent = 'Curating...';
 
             try {
+                // *** NEW: Call Gemini to generate a title first ***
+                const generatedTitle = await generateTitle(message);
+
+                // Now save everything to Firestore
                 await addDoc(echoesRef, {
                     x: tempCoords.x,
                     y: tempCoords.y,
                     message: message,
+                    title: generatedTitle, // <-- Save the new title
                     userId: currentUserId,
                     timestamp: serverTimestamp()
                 });
+                
                 closeModal();
+                showMessage("Your echo has been curated.", false);
+
             } catch (error) {
                 console.error("Error adding document: ", error);
                 showMessage("Could not leave your echo. Please try again.", true);
             } finally {
                 submitEchoBtn.disabled = false;
+                // *** NEW: Reset button text ***
                 submitEchoBtn.textContent = 'Leave Mark';
             }
         }
@@ -436,4 +495,3 @@
     </script>
 </body>
 </html>
-

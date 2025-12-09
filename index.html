@@ -1,6 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "VisualArtwork",
+          "@id": "https://kingarthguesthouse.com/#content",
+          "url": "https://kingarthguesthouse.com",
+          "name": "The Guestbook of Avalon",
+          "description": "The Guestbook of Avalon: An interactive, collaborative digital art piece. Leave your echo in the landscape and discover the stories left by other travelers.",
+          "artMedium": "Interactive Collaborative Storytelling",
+          "artForm": "Digital Monument",
+          "inLanguage": "en-US",
+          "datePublished": "2024-12-01",
+          "publisher": { "@id": "https://unearth.im/#organization" },
+          "isPartOf": { "@id": "https://kingarthguesthouse.com/#website" },
+          "author": [
+            { "@id": "https://josiest.com/#person" },
+            { "@id": "https://felixvelas.co/#person" }
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://kingarthguesthouse.com/#website",
+          "url": "https://kingarthguesthouse.com",
+          "name": "kingarthguesthouse.com",
+          "publisher": { "@id": "https://unearth.im/#organization" }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://unearth.im/#organization",
+          "name": "unearth.im",
+          "url": "https://unearth.im",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://unearth.im/favicon-32x32.png"
+          },
+          "foundingDate": "2024",
+          "sameAs": [
+            "https://twitter.com/unearthim",
+            "https://github.com/unearthim"
+          ]
+        },
+        {
+          "@type": "Person",
+          "@id": "https://josiest.com/#person",
+          "name": "Josie Jefferson",
+          "url": "https://josiest.com",
+          "jobTitle": "Digital Archaeologist & Trust Architect",
+          "affiliation": { "@id": "https://unearth.im/#organization" },
+          "sameAs": ["https://notjojo.im"]
+        },
+        {
+          "@type": "Person",
+          "@id": "https://felixvelas.co/#person",
+          "name": "Felix Velasco",
+          "url": "https://felixvelas.co",
+          "jobTitle": "Trust Architect & Digital Archaeologist",
+          "affiliation": { "@id": "https://unearth.im/#organization" },
+          "sameAs": ["https://www.linkedin.com/in/felix-velasco-b793015"]
+        }
+      ]
+    }
+    </script>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- SEO Meta Tags for the Digital Curator -->
@@ -86,8 +151,9 @@
     <!-- Footer & Artist Statement Link -->
     <div class="absolute bottom-8 left-8 md:bottom-12 md:left-12 text-white/70 text-sm font-serif select-none z-10">
         <p>
-            A digital monument by 
-            <a href="https://unearth.im" target="_blank" rel="noopener noreferrer" class="underline hover:text-cyan-300 transition-colors">unearth.im</a>
+            <small>
+                a <b><a href="https://sentientification.com" target="_blank" rel="noopener noreferrer" class="underline hover:text-cyan-300 transition-colors">liminal mind meld</a></b> collaboration: digital monument by <b><a href="https://unearth.im" target="_blank" rel="noopener noreferrer" class="underline hover:text-cyan-300 transition-colors">unearth.im</a></b> | <b><a href="https://archaeobytology.org" target="_blank" rel="noopener noreferrer" class="underline hover:text-cyan-300 transition-colors">archive & anvil</a></b>
+            </small>
             |
             <button id="open-artist-statement" class="underline hover:text-cyan-300 transition-colors">Artist Statement</button>
         </p>
